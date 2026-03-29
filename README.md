@@ -59,8 +59,6 @@ Demo development credentials:
 Notes:
 - The first boot can take a few minutes because Docker needs to build images and install dependencies.
 - The development seed is idempotent, so restarting the stack or rerunning the seed will recreate the demo scenario cleanly instead of accumulating duplicates.
-- After the stack is up, code changes in `apps/web` and `apps/api` are reflected automatically inside Docker because the workspace is mounted into both containers.
-- You only need `docker compose up --build` again when dependencies, Dockerfiles, or environment setup change.
 
 ## Monorepo Structure
 
@@ -92,11 +90,6 @@ yarn docker:logs
 yarn docker:down
 yarn docker:build
 ```
-
-With the current Docker development setup:
-- `web` runs `next dev` and reloads when frontend files change
-- `api` runs `nest start --watch` and reloads when backend files change
-- PostgreSQL data stays persisted in its named volume
 
 The backend container automatically runs:
 1. `prisma migrate deploy`
