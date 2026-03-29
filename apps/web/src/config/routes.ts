@@ -1,19 +1,25 @@
 import type { Route } from "next";
 
 export const ROUTES = {
-  home: "/",
-  login: "/login",
-  dashboard: "/dashboard",
-  appointments: "/appointments",
-  services: "/services",
-  branches: "/branches",
-  settings: "/settings",
-  book: "/book",
-  bookingServices: "/book/services",
-  bookingNewAppointment: "/book/appointments/new",
-  bookingConfirmation: "/book/confirmation",
-  bookingLookup: "/book/lookup",
-  bookingAppointmentBase: "/book/appointment",
+  home: "/" as Route,
+  login: "/login" as Route,
+  dashboard: "/dashboard" as Route,
+  appointments: "/appointments" as Route,
+  appointmentCreate: "/appointments/create" as Route,
+  appointmentDetail: (appointmentId: string): Route =>
+    `/appointments/${encodeURIComponent(appointmentId)}` as Route,
+  services: "/services" as Route,
+  serviceCreate: "/services/create" as Route,
+  serviceDetail: (serviceId: string): Route =>
+    `/services/${encodeURIComponent(serviceId)}` as Route,
+  branches: "/branches" as Route,
+  settings: "/settings" as Route,
+  book: "/book" as Route,
+  bookingServices: "/book/services" as Route,
+  bookingNewAppointment: "/book/appointments/new" as Route,
+  bookingConfirmation: "/book/confirmation" as Route,
+  bookingLookup: "/book/lookup" as Route,
+  bookingAppointmentBase: "/book/appointment" as Route,
   bookingAppointment: (code: string): Route =>
     `/book/appointment/${encodeURIComponent(code)}` as Route,
 } as const;

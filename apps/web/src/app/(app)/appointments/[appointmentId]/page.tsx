@@ -1,5 +1,5 @@
 import { AppointmentsPageContent } from "@/modules/appointments/server/appointments-page-content";
 
-export default async function AppointmentsPage() {
+export default async function AppointmentDetailPage() {
   return <AppointmentsPageContent />;
 }
