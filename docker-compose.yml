@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: turnix-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: turnix
+      POSTGRES_PASSWORD: turnix
+      POSTGRES_DB: turnix
+    ports:
+      - "5432:5432"
+    volumes:
+      - turnix_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U turnix -d turnix"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: turnix-api
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://turnix:turnix@postgres:5432/turnix?schema=public
+      JWT_SECRET: turnix-development-secret
+      JWT_EXPIRES_IN: 8h
+      DB_READY_MAX_ATTEMPTS: 20
+      DB_READY_RETRY_DELAY_SECONDS: 3
+    ports:
+      - "3001:3001"
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: turnix-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      NEXTAUTH_URL: http://demo.localhost:3000
+      NEXTAUTH_SECRET: turnix-development-secret
+      TURNIX_API_URL: http://api:3001
+      NEXT_PUBLIC_TURNIX_API_URL: http://localhost:3001
+      TURNIX_TENANT_SLUG_FALLBACK: demo
+      NEXT_PUBLIC_TURNIX_TENANT_SLUG_FALLBACK: demo
+      NEXT_PUBLIC_TURNIX_USE_MOCKS: "false"
+      AUTH_USE_DEV_CREDENTIALS: "false"
+    ports:
+      - "3000:3000"
+
+volumes:
+  turnix_postgres_data:

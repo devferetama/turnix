@@ -1,0 +1,443 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AppRole {
+  SUPER_ADMIN
+  TENANT_ADMIN
+  OPERATOR
+  VIEWER
+}
+
+enum ServiceVisibility {
+  PUBLIC
+  PRIVATE
+  INTERNAL
+}
+
+enum ServiceMode {
+  IN_PERSON
+  REMOTE
+  HYBRID
+}
+
+enum SlotStatus {
+  OPEN
+  FULL
+  BLOCKED
+  CANCELLED
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  RESCHEDULED
+}
+
+enum AppointmentSource {
+  WEB
+  STAFF
+  API
+  IMPORT
+}
+
+enum AvailabilityExceptionType {
+  BLOCK
+  ADDITIONAL_AVAILABILITY
+  CAPACITY_OVERRIDE
+}
+
+enum Weekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+model Tenant {
+  id                     String                     @id @default(uuid()) @db.Uuid
+  slug                   String                     @unique
+  name                   String
+  timezone               String                     @default("UTC")
+  isActive               Boolean                    @default(true)
+  branches               Branch[]
+  serviceCategories      ServiceCategory[]
+  services               Service[]
+  staffUsers             StaffUser[]
+  citizens               Citizen[]
+  availabilityRules      AvailabilityRule[]
+  holidays               Holiday[]
+  availabilityExceptions AvailabilityException[]
+  timeSlots              TimeSlot[]
+  appointments           Appointment[]
+  appointmentHistory     AppointmentStatusHistory[]
+  appointmentCancels     AppointmentCancellation[]
+  appointmentReschedules AppointmentReschedule[]
+  settings               TenantSettings?
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
+}
+
+model Branch {
+  id                     String                  @id @default(uuid()) @db.Uuid
+  tenantId               String                  @db.Uuid
+  slug                   String
+  name                   String
+  description            String?
+  timezone               String?
+  addressLine1           String?
+  addressLine2           String?
+  city                   String?
+  state                  String?
+  country                String?
+  postalCode             String?
+  isActive               Boolean                 @default(true)
+  tenant                 Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  services               Service[]
+  staffUsers             StaffUser[]
+  availabilityRules      AvailabilityRule[]
+  holidays               Holiday[]
+  availabilityExceptions AvailabilityException[]
+  timeSlots              TimeSlot[]
+  appointments           Appointment[]
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, isActive])
+}
+
+model ServiceCategory {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @db.Uuid
+  slug        String
+  name        String
+  description String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  services    Service[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, isActive])
+}
+
+model Service {
+  id                     String                  @id @default(uuid()) @db.Uuid
+  tenantId               String                  @db.Uuid
+  categoryId             String?                 @db.Uuid
+  branchId               String?                 @db.Uuid
+  slug                   String
+  name                   String
+  description            String?
+  visibility             ServiceVisibility       @default(PUBLIC)
+  mode                   ServiceMode             @default(IN_PERSON)
+  durationMinutes        Int
+  bufferBeforeMinutes    Int                     @default(0)
+  bufferAfterMinutes     Int                     @default(0)
+  slotCapacity           Int                     @default(1)
+  allowOnlineBooking     Boolean                 @default(true)
+  requiresApproval       Boolean                 @default(false)
+  requiresAuthentication Boolean                 @default(false)
+  allowsCancellation     Boolean                 @default(true)
+  allowsReschedule       Boolean                 @default(true)
+  isActive               Boolean                 @default(true)
+  tenant                 Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category               ServiceCategory?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  branch                 Branch?                 @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  availabilityRules      AvailabilityRule[]
+  availabilityExceptions AvailabilityException[]
+  timeSlots              TimeSlot[]
+  appointments           Appointment[]
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, categoryId])
+  @@index([tenantId, branchId])
+  @@index([tenantId, visibility, isActive])
+}
+
+model StaffUser {
+  id                     String                     @id @default(uuid()) @db.Uuid
+  tenantId               String                     @db.Uuid
+  branchId               String?                    @db.Uuid
+  email                  String                     @db.VarChar(320)
+  passwordHash           String?
+  firstName              String
+  lastName               String
+  role                   AppRole                    @default(OPERATOR)
+  isActive               Boolean                    @default(true)
+  tenant                 Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch                 Branch?                    @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  availabilityRules      AvailabilityRule[]
+  availabilityExceptions AvailabilityException[]
+  timeSlots              TimeSlot[]
+  appointments           Appointment[]
+  statusChanges          AppointmentStatusHistory[] @relation("AppointmentStatusChangedBy")
+  cancellations          AppointmentCancellation[]  @relation("AppointmentCancelledBy")
+  reschedules            AppointmentReschedule[]    @relation("AppointmentRescheduledBy")
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
+
+  @@unique([tenantId, email])
+  @@index([tenantId, role, isActive])
+  @@index([tenantId, branchId])
+}
+
+model Citizen {
+  id             String        @id @default(uuid()) @db.Uuid
+  tenantId       String        @db.Uuid
+  firstName      String
+  lastName       String
+  email          String?       @db.VarChar(320)
+  phone          String?
+  documentType   String?
+  documentNumber String?
+  birthDate      DateTime?     @db.Date
+  isActive       Boolean       @default(true)
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointments   Appointment[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([tenantId, email])
+  @@index([tenantId, documentType, documentNumber])
+  @@index([tenantId, lastName, firstName])
+}
+
+model AvailabilityRule {
+  id                  String     @id @default(uuid()) @db.Uuid
+  tenantId            String     @db.Uuid
+  branchId            String     @db.Uuid
+  serviceId           String     @db.Uuid
+  staffUserId         String?    @db.Uuid
+  weekday             Weekday
+  startMinute         Int
+  endMinute           Int
+  slotDurationMinutes Int
+  capacity            Int        @default(1)
+  validFrom           DateTime?  @db.Date
+  validTo             DateTime?  @db.Date
+  isActive            Boolean    @default(true)
+  notes               String?
+  tenant              Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch              Branch     @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  service             Service    @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  staffUser           StaffUser? @relation(fields: [staffUserId], references: [id], onDelete: SetNull)
+  timeSlots           TimeSlot[] @relation("RuleGeneratedTimeSlots")
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  @@index([tenantId, branchId, weekday, isActive])
+  @@index([tenantId, serviceId, weekday, isActive])
+  @@index([tenantId, staffUserId, weekday, isActive])
+}
+
+model Holiday {
+  id                  String   @id @default(uuid()) @db.Uuid
+  tenantId            String   @db.Uuid
+  branchId            String?  @db.Uuid
+  name                String
+  date                DateTime @db.Date
+  description         String?
+  isRecurringAnnually Boolean  @default(false)
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch              Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([tenantId, date])
+  @@index([tenantId, branchId, date])
+}
+
+model AvailabilityException {
+  id                  String                    @id @default(uuid()) @db.Uuid
+  tenantId            String                    @db.Uuid
+  branchId            String                    @db.Uuid
+  serviceId           String?                   @db.Uuid
+  staffUserId         String?                   @db.Uuid
+  type                AvailabilityExceptionType
+  startsAt            DateTime
+  endsAt              DateTime
+  capacityOverride    Int?
+  slotDurationMinutes Int?
+  isAllDay            Boolean                   @default(false)
+  reason              String?
+  tenant              Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch              Branch                    @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  service             Service?                  @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  staffUser           StaffUser?                @relation(fields: [staffUserId], references: [id], onDelete: SetNull)
+  timeSlots           TimeSlot[]                @relation("ExceptionGeneratedTimeSlots")
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+
+  @@index([tenantId, startsAt, endsAt])
+  @@index([tenantId, branchId, startsAt])
+  @@index([tenantId, serviceId, startsAt])
+}
+
+model TimeSlot {
+  id                      String                  @id @default(uuid()) @db.Uuid
+  tenantId                String                  @db.Uuid
+  branchId                String                  @db.Uuid
+  serviceId               String                  @db.Uuid
+  staffUserId             String?                 @db.Uuid
+  availabilityRuleId      String?                 @db.Uuid
+  availabilityExceptionId String?                 @db.Uuid
+  slotDate                DateTime                @db.Date
+  startsAt                DateTime
+  endsAt                  DateTime
+  capacity                Int                     @default(1)
+  reservedCount           Int                     @default(0)
+  isPublic                Boolean                 @default(true)
+  status                  SlotStatus              @default(OPEN)
+  notes                   String?
+  tenant                  Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch                  Branch                  @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  service                 Service                 @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  staffUser               StaffUser?              @relation(fields: [staffUserId], references: [id], onDelete: SetNull)
+  availabilityRule        AvailabilityRule?       @relation("RuleGeneratedTimeSlots", fields: [availabilityRuleId], references: [id], onDelete: SetNull)
+  availabilityException   AvailabilityException?  @relation("ExceptionGeneratedTimeSlots", fields: [availabilityExceptionId], references: [id], onDelete: SetNull)
+  appointments            Appointment[]
+  rescheduleSources       AppointmentReschedule[] @relation("RescheduleFromSlot")
+  rescheduleTargets       AppointmentReschedule[] @relation("RescheduleToSlot")
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+
+  @@index([tenantId, slotDate, status])
+  @@index([tenantId, branchId, slotDate])
+  @@index([tenantId, serviceId, slotDate])
+  @@index([tenantId, staffUserId, slotDate])
+  @@index([tenantId, startsAt])
+}
+
+model Appointment {
+  id             String                     @id @default(uuid()) @db.Uuid
+  tenantId       String                     @db.Uuid
+  branchId       String                     @db.Uuid
+  serviceId      String                     @db.Uuid
+  citizenId      String                     @db.Uuid
+  staffUserId    String?                    @db.Uuid
+  slotId         String                     @db.Uuid
+  code           String
+  source         AppointmentSource          @default(WEB)
+  status         AppointmentStatus          @default(PENDING)
+  scheduledStart DateTime
+  scheduledEnd   DateTime
+  citizenNotes   String?
+  internalNotes  String?
+  checkedInAt    DateTime?
+  completedAt    DateTime?
+  cancelledAt    DateTime?
+  tenant         Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch         Branch                     @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  service        Service                    @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  citizen        Citizen                    @relation(fields: [citizenId], references: [id], onDelete: Restrict)
+  staffUser      StaffUser?                 @relation(fields: [staffUserId], references: [id], onDelete: SetNull)
+  slot           TimeSlot                   @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  statusHistory  AppointmentStatusHistory[]
+  cancellation   AppointmentCancellation?
+  reschedules    AppointmentReschedule[]
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status, scheduledStart])
+  @@index([tenantId, scheduledStart])
+  @@index([tenantId, branchId, scheduledStart])
+  @@index([tenantId, branchId, status, scheduledStart])
+  @@index([tenantId, citizenId, scheduledStart])
+  @@index([tenantId, serviceId, scheduledStart])
+  @@index([tenantId, slotId])
+}
+
+model AppointmentStatusHistory {
+  id                   String             @id @default(uuid()) @db.Uuid
+  tenantId             String             @db.Uuid
+  appointmentId        String             @db.Uuid
+  changedByStaffUserId String?            @db.Uuid
+  fromStatus           AppointmentStatus?
+  toStatus             AppointmentStatus
+  note                 String?
+  metadata             Json?
+  changedAt            DateTime           @default(now())
+  tenant               Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointment          Appointment        @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  changedByStaffUser   StaffUser?         @relation("AppointmentStatusChangedBy", fields: [changedByStaffUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, appointmentId, changedAt])
+  @@index([tenantId, toStatus, changedAt])
+}
+
+model AppointmentCancellation {
+  id                     String      @id @default(uuid()) @db.Uuid
+  tenantId               String      @db.Uuid
+  appointmentId          String      @unique @db.Uuid
+  cancelledByStaffUserId String?     @db.Uuid
+  reason                 String?
+  details                String?
+  cancelledAt            DateTime    @default(now())
+  tenant                 Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointment            Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  cancelledByStaffUser   StaffUser?  @relation("AppointmentCancelledBy", fields: [cancelledByStaffUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, cancelledAt])
+}
+
+model AppointmentReschedule {
+  id                       String      @id @default(uuid()) @db.Uuid
+  tenantId                 String      @db.Uuid
+  appointmentId            String      @db.Uuid
+  fromSlotId               String?     @db.Uuid
+  toSlotId                 String?     @db.Uuid
+  rescheduledByStaffUserId String?     @db.Uuid
+  previousStart            DateTime
+  previousEnd              DateTime
+  nextStart                DateTime
+  nextEnd                  DateTime
+  reason                   String?
+  createdAt                DateTime    @default(now())
+  tenant                   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointment              Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  fromSlot                 TimeSlot?   @relation("RescheduleFromSlot", fields: [fromSlotId], references: [id], onDelete: SetNull)
+  toSlot                   TimeSlot?   @relation("RescheduleToSlot", fields: [toSlotId], references: [id], onDelete: SetNull)
+  rescheduledByStaffUser   StaffUser?  @relation("AppointmentRescheduledBy", fields: [rescheduledByStaffUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, appointmentId, createdAt])
+  @@index([tenantId, createdAt])
+}
+
+model TenantSettings {
+  id                               String   @id @default(uuid()) @db.Uuid
+  tenantId                         String   @unique @db.Uuid
+  locale                           String?
+  timezone                         String?
+  bookingLeadTimeMinutes           Int      @default(0)
+  bookingCancellationWindowMinutes Int      @default(0)
+  bookingRescheduleWindowMinutes   Int      @default(0)
+  defaultSlotCapacity              Int      @default(1)
+  defaultSlotDurationMinutes       Int      @default(30)
+  allowCitizenCancellation         Boolean  @default(true)
+  allowCitizenReschedule           Boolean  @default(true)
+  requireCitizenEmail              Boolean  @default(false)
+  requireCitizenDocument           Boolean  @default(false)
+  tenant                           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt                        DateTime @default(now())
+  updatedAt                        DateTime @updatedAt
+}

@@ -1,0 +1,24 @@
+{
+  "name": "turnix",
+  "private": true,
+  "packageManager": "yarn@3.8.3",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose stop postgres",
+    "db:logs": "docker compose logs -f postgres",
+    "docker:build": "docker compose build",
+    "docker:migrate": "docker compose run --rm --no-deps api yarn workspace api prisma:migrate:deploy",
+    "docker:seed": "docker compose run --rm --no-deps api yarn workspace api prisma:seed",
+    "docker:up": "./scripts/docker-up.sh",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "dev:web": "yarn workspace web dev",
+    "dev:api": "yarn workspace api start:dev",
+    "build:web": "yarn workspace web build",
+    "build:api": "yarn workspace api build"
+  }
+}
