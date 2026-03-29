@@ -22,10 +22,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/atoms/card";
+import { DateTimeText } from "@/components/ui/atoms/date-time-text";
 import { Spinner } from "@/components/ui/atoms/spinner";
 import { StatusBadge } from "@/components/ui/molecules/status-badge";
 import { ROUTES } from "@/config/routes";
-import { cn, formatDateTime } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { AppointmentRecord } from "@/modules/appointments/types/appointment.types";
 import { useI18n } from "@/providers/i18n-provider";
 
@@ -135,10 +136,10 @@ export function DashboardUpcomingTable({
       cell: ({ row }) => (
         <div className="space-y-1 text-sm">
           <p className="text-foreground">
-            {formatDateTime(row.original.scheduledStart, locale)}
+            <DateTimeText value={row.original.scheduledStart} locale={locale} />
           </p>
           <p className="text-xs text-muted-foreground">
-            {formatDateTime(row.original.scheduledEnd, locale)}
+            <DateTimeText value={row.original.scheduledEnd} locale={locale} />
           </p>
         </div>
       ),

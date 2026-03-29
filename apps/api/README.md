@@ -62,9 +62,11 @@ In development, the `api` container now:
 - waits for PostgreSQL readiness using the compose healthcheck plus a small retry loop
 - runs `prisma migrate deploy`
 - runs the demo seed
-- starts the NestJS server
+- starts the NestJS server in watch mode inside Docker development
 
 The seed runs only when `NODE_ENV=development`.
+
+When you use the full Docker stack for development, the monorepo workspace is mounted into the container, so backend code changes are picked up automatically without rebuilding the image. Rebuild only when dependencies, Dockerfiles, or base environment setup change.
 
 That flow seeds a default development tenant and admin:
 

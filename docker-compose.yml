@@ -28,13 +28,20 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3001
+      APP_START_COMMAND: yarn workspace api start:dev
       DATABASE_URL: postgresql://turnix:turnix@postgres:5432/turnix?schema=public
       JWT_SECRET: turnix-development-secret
       JWT_EXPIRES_IN: 8h
       DB_READY_MAX_ATTEMPTS: 20
       DB_READY_RETRY_DELAY_SECONDS: 3
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: 1000
     ports:
       - "3001:3001"
+    volumes:
+      - .:/workspace
+      - turnix_node_modules:/workspace/node_modules
+      - turnix_api_dist:/workspace/apps/api/dist
   web:
     build:
       context: .
@@ -55,8 +62,18 @@ services:
       NEXT_PUBLIC_TURNIX_TENANT_SLUG_FALLBACK: demo
       NEXT_PUBLIC_TURNIX_USE_MOCKS: "false"
       AUTH_USE_DEV_CREDENTIALS: "false"
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: 1000
+      WATCHPACK_POLLING: "true"
     ports:
       - "3000:3000"
+    volumes:
+      - .:/workspace
+      - turnix_node_modules:/workspace/node_modules
+      - turnix_web_next:/workspace/apps/web/.next
 
 volumes:
   turnix_postgres_data:
+  turnix_node_modules:
+  turnix_api_dist:
+  turnix_web_next:

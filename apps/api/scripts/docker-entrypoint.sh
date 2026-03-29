@@ -6,6 +6,8 @@ log() {
   printf '%s\n' "[api] $1"
 }
 
+APP_START_COMMAND="${APP_START_COMMAND:-yarn workspace api start}"
+
 run_dev_bootstrap() {
   attempt=1
   max_attempts="${DB_READY_MAX_ATTEMPTS:-20}"
@@ -41,5 +43,5 @@ else
   log "Skipping automatic database bootstrap because NODE_ENV=${NODE_ENV:-production}."
 fi
 
-log "Starting Turnix API server..."
-exec yarn workspace api start
+log "Starting Turnix API server with: ${APP_START_COMMAND}"
+exec sh -lc "${APP_START_COMMAND}"
